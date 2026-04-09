@@ -115,6 +115,19 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       
       setRole(userRole);
+
+      // For users, check local storage for session data
+      if (userRole === 'user') {
+        const savedData = localStorage.getItem(`blinkit_user_data_${supabaseUser.id}`);
+        if (savedData) {
+          try {
+            const parsed = JSON.parse(savedData);
+            processAndSetData(parsed, false); // Don't save to Supabase for user session
+          } catch (e) {
+            console.error('Error loading session data:', e);
+          }
+        }
+      }
     } else {
       setRole(null);
     }
@@ -148,30 +161,32 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     setRole(null);
     setUser(null);
+    // Clear session data on sign out if desired, but user said "each user session"
+    // We'll keep it in local storage for the specific user ID
   };
 
-  // Load data from Supabase on role change
+  // Load data from Supabase on role change - ONLY FOR ADMIN
   useEffect(() => {
-    if (role && user) {
+    if (role === 'admin' && user) {
       loadFromSupabase();
     }
   }, [role, user]);
 
   const loadFromSupabase = async () => {
-    if (!role || !isSupabaseConfigured) return;
+    if (role !== 'admin' || !isSupabaseConfigured) return;
     setIsLoading(true);
     try {
       const { data: dbData, error } = await supabase
         .from('master_data')
         .select('data')
         .eq('role', role)
-        .limit(1000); // Add a limit just in case
+        .limit(1000);
 
       if (error) throw error;
 
       if (dbData && dbData.length > 0) {
         const rows = dbData.map(item => item.data);
-        processAndSetData(rows, false); // false = don't save back to DB
+        processAndSetData(rows, false);
       }
     } catch (err) {
       console.error('Supabase Load Error:', err);
@@ -210,8 +225,12 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       }));
 
-      if (saveToDb && isSupabaseConfigured) {
+      // Role-based persistence
+      if (role === 'admin' && saveToDb && isSupabaseConfigured) {
         saveToSupabase(dataToProcess);
+      } else if (role === 'user' && user) {
+        // Store user data in local storage for the session
+        localStorage.setItem(`blinkit_user_data_${user.id}`, JSON.stringify(dataToProcess));
       }
     } catch (err) {
       setError('Data processing failed. Please check your CSV format.');
@@ -318,6 +337,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     }
 
+    // Clear local storage for user
+    if (role === 'user' && user) {
+      localStorage.removeItem(`blinkit_user_data_${user.id}`);
+    }
+
     setRoleData(prev => ({
       ...prev,
       [role]: {
@@ -330,6 +354,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }));
     setError(null);
   };
+
+  // Auto-fetch GitHub data for admin role only if no data is loaded
+  useEffect(() => {
+    const adminData = roleData.admin;
+    if (role === 'admin' && !adminData.isDataLoaded && !isFetchingGitHub && adminData.recordCounts.total === 0) {
+      fetchGitHubData();
+    }
+  }, [role, roleData.admin.isDataLoaded, isFetchingGitHub, roleData.admin.recordCounts.total, fetchGitHubData]);
 
   return (
     <DataContext.Provider value={{ 

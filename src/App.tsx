@@ -26,7 +26,7 @@ const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-    const { 
+  const { 
     data, 
     isLoading, 
     isDataLoaded, 
@@ -38,13 +38,6 @@ const AppContent: React.FC = () => {
     user,
     signOut
   } = useData();
-
-  // Auto-fetch GitHub data for all roles if no data is loaded
-  useEffect(() => {
-    if (role && !isDataLoaded && !isFetchingGitHub && recordCounts.total === 0) {
-      fetchGitHubData();
-    }
-  }, [role, isDataLoaded, isFetchingGitHub, recordCounts.total, fetchGitHubData]);
 
   // Handle redirection based on role
   useEffect(() => {
@@ -123,6 +116,48 @@ const AppContent: React.FC = () => {
     }
 
     if ((!isDataLoaded || !data) && activeTab !== 'upload') {
+      if (role === 'user') {
+        return (
+          <div className="flex flex-col items-center justify-center min-h-[80vh] text-white p-8">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="p-10 bg-blue-600/10 rounded-[40px] border border-blue-500/20 mb-8 group hover:bg-blue-600/20 transition-all duration-500 shadow-2xl shadow-blue-500/10"
+            >
+              <Upload size={64} className="text-blue-400 group-hover:scale-110 transition-transform duration-500" />
+            </motion.div>
+            
+            <h2 className="text-4xl font-black tracking-tighter uppercase mb-4 text-center">
+              Upload CSV to start analysis
+            </h2>
+            <p className="text-zinc-500 font-bold text-sm max-w-md text-center mb-10 leading-relaxed">
+              Please upload your CSV file to view analysis
+            </p>
+            
+            <div className="w-full max-w-md p-8 border-2 border-dashed border-white/10 rounded-[32px] flex flex-col items-center gap-6 bg-white/5 backdrop-blur-sm hover:border-blue-500/30 transition-colors">
+               <div className="text-center">
+                 <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">
+                   Supported format
+                 </p>
+                 <p className="text-xs font-bold text-white">.csv (Blinkit Master Data)</p>
+               </div>
+               
+               <button 
+                onClick={() => setActiveTab('upload')}
+                className="w-full py-4 bg-white text-zinc-950 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-white/10 flex items-center justify-center gap-2"
+              >
+                <Upload size={16} />
+                Select CSV File
+              </button>
+              
+              <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
+                Drag and drop your file here
+              </p>
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div className="flex flex-col items-center justify-center min-h-[80vh] text-white p-8">
           <div className="p-6 bg-blue-500/10 rounded-full border border-blue-500/20 mb-6">
