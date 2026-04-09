@@ -8,7 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Sparkles, Brain, TrendingUp, AlertCircle, 
   Lightbulb, RefreshCw, ChevronRight, Zap,
-  BarChart3, PieChart as PieChartIcon, ShoppingBag, MapPin, ChevronDown
+  BarChart3, PieChart as PieChartIcon, ShoppingBag, MapPin, ChevronDown,
+  FileText
 } from 'lucide-react';
 import { AnalyticsData } from '../types';
 import { getStrategicInsights } from '../services/geminiService';
@@ -53,24 +54,62 @@ const AIInsights: React.FC<AIInsightsProps> = ({ data }) => {
     fetchInsights();
   }, [data]);
 
-  const predictionCards = useMemo(() => {
+  const summary = useMemo(() => {
+    const totalOrders = data.orders.length;
     const totalRevenue = data.dailyStats.reduce((sum, d) => sum + d.revenue, 0);
-    const totalOrders = data.dailyStats.reduce((sum, d) => sum + d.orders, 0);
-    const avgRevenue = totalRevenue / (data.dailyStats.length || 1);
+    const avgDeliveryTime = data.dailyStats.reduce((sum, d) => sum + d.avgDeliveryTime, 0) / (data.dailyStats.length || 1);
+    const recentGrowth = data.dailyStats[data.dailyStats.length - 1]?.growthPercent || 0;
+    const aov = totalRevenue / (totalOrders || 1);
     
-    return [
-      { title: 'Avg Daily Revenue', value: `₹${Math.round(avgRevenue).toLocaleString()}`, sub: 'Based on uploaded data', icon: TrendingUp, color: 'from-blue-500 to-cyan-500' },
-      { title: 'Total Orders', value: totalOrders.toLocaleString(), sub: 'Processed records', icon: ShoppingBag, color: 'from-emerald-500 to-teal-500' },
-      { title: 'Total Revenue', value: `₹${totalRevenue.toLocaleString()}`, sub: 'Cumulative total', icon: Zap, color: 'from-purple-500 to-pink-500' },
-      { title: 'Active Cities', value: data.cityStats.length.toString(), sub: 'Geographic spread', icon: MapPin, color: 'from-amber-500 to-orange-500' },
-    ];
+    // Simple forecast for tomorrow
+    const forecastedOrders = Math.round((totalOrders / (data.dailyStats.length || 1)) * (1 + recentGrowth / 100));
+    const forecastedRevenue = Math.round((totalRevenue / (data.dailyStats.length || 1)) * (1 + recentGrowth / 100));
+    
+    return {
+      totalOrders,
+      totalRevenue,
+      avgDeliveryTime,
+      recentGrowth,
+      aov,
+      forecastedOrders,
+      forecastedRevenue
+    };
   }, [data]);
+
+  const parsedSections = useMemo(() => {
+    if (!insights) return null;
+    
+    const sections: { title: string; content: string; type: 'growth' | 'demand' | 'risks' | 'recommendations' }[] = [];
+    
+    // Split by numbered points (1., 2., 3., 4.) or markdown headers
+    // Using a more robust regex that handles bolding and varying whitespace
+    const parts = insights.split(/\n(?=\d\.|\*\*|\#)/);
+    
+    parts.forEach(part => {
+      const trimmed = part.trim();
+      if (!trimmed) return;
+      
+      const lower = trimmed.toLowerCase();
+      
+      // Categorize based on markers and keywords, ensuring we don't duplicate types
+      if ((lower.includes('1.') || lower.includes('prediction')) && !sections.some(s => s.type === 'growth')) {
+        sections.push({ title: 'Growth Predictions', content: trimmed, type: 'growth' });
+      } else if ((lower.includes('2.') || lower.includes('demand')) && !sections.some(s => s.type === 'demand')) {
+        sections.push({ title: 'Demand Insights', content: trimmed, type: 'demand' });
+      } else if ((lower.includes('3.') || lower.includes('risk') || lower.includes('bottleneck')) && !sections.some(s => s.type === 'risks')) {
+        sections.push({ title: 'Risk Assessment', content: trimmed, type: 'risks' });
+      } else if ((lower.includes('4.') || lower.includes('recommendation')) && !sections.some(s => s.type === 'recommendations')) {
+        sections.push({ title: 'Actionable Recommendations', content: trimmed, type: 'recommendations' });
+      }
+    });
+    
+    return sections;
+  }, [insights]);
 
   const quickWins = useMemo(() => {
     const topCategory = [...(data?.categoryStats || [])].sort((a, b) => b.revenue - a.revenue)[0]?.category || 'N/A';
     const topCity = [...(data?.cityStats || [])].sort((a, b) => b.revenue - a.revenue)[0]?.city || 'N/A';
     
-    // Find some low stock products to recommend
     const lowStockProds = data.products.filter(p => p.stock < 15).slice(0, 2);
     
     interface QuickWin {
@@ -103,24 +142,65 @@ const AIInsights: React.FC<AIInsightsProps> = ({ data }) => {
     return wins.slice(0, 4);
   }, [data]);
 
+  const KPICard = ({ label, value, icon: Icon, color }: { label: string; value: string | number; icon: any; color: string }) => (
+    <div className="bg-zinc-900/50 backdrop-blur-xl p-6 rounded-2xl shadow-xl border border-white/5 flex items-center gap-4 hover:bg-zinc-900/80 transition-all">
+      <div className={`p-3 rounded-xl bg-opacity-20 ${color.replace('text-', 'bg-')} ${color}`}>
+        <Icon size={20} />
+      </div>
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{label}</p>
+        <p className="text-xl font-black text-white tracking-tight">{value}</p>
+      </div>
+    </div>
+  );
+
+  const InsightCard = ({ title, content, type }: { title: string; content: string; type: 'growth' | 'demand' | 'risks' | 'recommendations' }) => {
+    const config = {
+      growth: { icon: TrendingUp, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+      demand: { icon: MapPin, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+      risks: { icon: AlertCircle, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
+      recommendations: { icon: Lightbulb, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
+    }[type];
+
+    const Icon = config.icon;
+
+    return (
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-zinc-900/50 backdrop-blur-xl rounded-[32px] shadow-2xl border border-white/5 overflow-hidden hover:bg-zinc-900/80 transition-all group"
+      >
+        <div className={`px-8 py-6 border-b border-white/5 flex items-center gap-3 ${config.bg}`}>
+          <Icon size={20} className={config.color} />
+          <h4 className={`text-lg font-black tracking-tight ${config.color}`}>{title}</h4>
+        </div>
+        <div className="p-8">
+          <div className="prose prose-invert prose-zinc max-w-none text-zinc-400 leading-relaxed">
+            <ReactMarkdown>{content}</ReactMarkdown>
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="p-8 space-y-8 bg-zinc-950 min-h-screen text-zinc-100"
+      className="p-8 space-y-10 bg-zinc-950 min-h-screen text-white"
     >
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div>
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl shadow-xl shadow-blue-500/20">
-              <Sparkles size={24} className="text-white" />
+            <div className="p-3 bg-white rounded-2xl shadow-xl">
+              <Sparkles size={24} className="text-zinc-950" />
             </div>
-            <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-zinc-400 to-zinc-600">
-              AI Strategic Insights
+            <h1 className="text-4xl font-black tracking-tight text-white">
+              Strategic Dashboard
             </h1>
           </div>
-          <p className="text-zinc-500 mt-2 font-medium">Powered by Google Gemini • Real-time predictive analytics and recommendations</p>
+          <p className="text-zinc-500 mt-2 font-medium">Executive analysis powered by Gemini AI • Real-time performance insights</p>
         </div>
 
         <button 
@@ -129,102 +209,94 @@ const AIInsights: React.FC<AIInsightsProps> = ({ data }) => {
           className="flex items-center gap-2 px-8 py-3 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl font-black text-xs uppercase tracking-widest text-zinc-400 hover:text-white disabled:opacity-30 transition-all shadow-xl"
         >
           <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
-          Regenerate Insights
+          Refresh Analysis
         </button>
       </div>
 
-      {/* Prediction Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {predictionCards.map((card, i) => (
-          <motion.div
-            key={card.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="bg-white/5 backdrop-blur-2xl border border-white/10 p-8 rounded-[32px] shadow-2xl relative overflow-hidden group"
-          >
-            <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${card.color} opacity-10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:opacity-20 transition-all duration-500`} />
-            <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${card.color} flex items-center justify-center text-white shadow-lg shadow-blue-500/20 mb-6`}>
-              <card.icon size={24} />
-            </div>
-            <p className="text-zinc-500 text-xs font-black uppercase tracking-widest">{card.title}</p>
-            <p className="text-3xl font-black text-white tracking-tighter mt-1">{card.value}</p>
-            <p className="text-xs text-zinc-400 font-bold mt-2">{card.sub}</p>
-          </motion.div>
-        ))}
+      {/* KPI Mini Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <KPICard label="Forecasted Orders" value={summary.forecastedOrders} icon={ShoppingBag} color="text-blue-600" />
+        <KPICard label="Forecasted Revenue" value={`₹${summary.forecastedRevenue.toLocaleString()}`} icon={TrendingUp} color="text-emerald-600" />
+        <KPICard label="Average Order Value" value={`₹${Math.round(summary.aov)}`} icon={Zap} color="text-purple-600" />
+        <KPICard label="Avg Delivery Time" value={`${summary.avgDeliveryTime.toFixed(1)} min`} icon={BarChart3} color="text-orange-600" />
+        <KPICard label="Recent Growth" value={`${summary.recentGrowth.toFixed(1)}%`} icon={TrendingUp} color="text-emerald-600" />
       </div>
 
-      {/* Main Insights Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          <div className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[40px] shadow-2xl overflow-hidden min-h-[600px]">
-            <div className="p-8 border-b border-white/10 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Brain size={20} className="text-purple-500" />
-                <h3 className="text-xl font-black text-white tracking-tight">Strategic Analysis</h3>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full text-[10px] font-black uppercase tracking-widest">
-                <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                Live Analysis
-              </div>
-            </div>
-
-            <div className="p-10">
-              <AnimatePresence mode="wait">
-                {isLoading ? (
-                  <motion.div 
-                    key="loading"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="space-y-8"
-                  >
-                    {[1, 2, 3, 4].map(i => (
-                      <div key={i} className="space-y-3">
-                        <div className="h-6 w-1/3 bg-white/5 rounded-lg animate-pulse" />
-                        <div className="h-4 w-full bg-white/5 rounded-lg animate-pulse" />
-                        <div className="h-4 w-5/6 bg-white/5 rounded-lg animate-pulse" />
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Left Column: Structured Insights */}
+        <div className="lg:col-span-8 space-y-8">
+          <AnimatePresence mode="wait">
+            {isLoading ? (
+              <motion.div 
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="grid grid-cols-1 md:grid-cols-2 gap-6"
+              >
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="bg-white p-8 rounded-[32px] border border-zinc-100 space-y-4">
+                    <div className="h-8 w-1/2 bg-zinc-100 rounded-lg animate-pulse" />
+                    <div className="h-4 w-full bg-zinc-50 rounded-lg animate-pulse" />
+                    <div className="h-4 w-5/6 bg-zinc-50 rounded-lg animate-pulse" />
+                  </div>
+                ))}
+              </motion.div>
+            ) : error ? (
+              <motion.div 
+                key="error"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="bg-zinc-900/50 backdrop-blur-xl p-12 rounded-[40px] border border-white/5 flex flex-col items-center justify-center text-center space-y-6 shadow-2xl"
+              >
+                <div className="p-6 bg-rose-500/10 rounded-full border border-rose-500/20">
+                  <AlertCircle size={48} className="text-rose-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-white uppercase tracking-tight">Analysis Failed</h3>
+                  <p className="text-zinc-400 font-medium mt-2 max-w-xs">{error}</p>
+                </div>
+                <button 
+                  onClick={fetchInsights}
+                  className="px-8 py-3 bg-white text-zinc-950 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
+                >
+                  Try Again
+                </button>
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="content"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="space-y-6"
+              >
+                <div className="columns-1 md:columns-2 gap-4 space-y-4">
+                  {parsedSections && parsedSections.length > 0 ? (
+                    parsedSections.map((section, i) => (
+                      <div key={i} className="break-inside-avoid mb-4">
+                        <InsightCard {...section} />
                       </div>
-                    ))}
-                  </motion.div>
-                ) : error ? (
-                  <motion.div 
-                    key="error"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex flex-col items-center justify-center h-[400px] text-center space-y-4"
-                  >
-                    <div className="p-6 bg-rose-500/10 rounded-full border border-rose-500/20">
-                      <AlertCircle size={48} className="text-rose-400" />
+                    ))
+                  ) : (
+                    <div className="bg-zinc-900/50 backdrop-blur-xl p-12 rounded-[40px] border border-white/5 text-center">
+                      <p className="text-zinc-500 font-bold">No structured insights available. See full notes below.</p>
                     </div>
-                    <p className="text-zinc-400 font-bold max-w-xs">{error}</p>
-                    <button 
-                      onClick={fetchInsights}
-                      className="px-8 py-3 bg-white text-zinc-950 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all"
-                    >
-                      Try Again
-                    </button>
-                  </motion.div>
-                ) : (
-                  <motion.div 
-                    key="content"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="prose prose-invert prose-zinc max-w-none markdown-body"
-                  >
-                    <ReactMarkdown>{insights}</ReactMarkdown>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* Sidebar Insights */}
-        <div className="space-y-8">
-          <div className="bg-gradient-to-br from-indigo-600/20 to-purple-600/20 backdrop-blur-2xl border border-white/10 p-8 rounded-[40px] shadow-2xl space-y-6">
+        {/* Right Column: Sidebar */}
+        <div className="lg:col-span-4 space-y-8">
+          {/* Quick Wins Card */}
+          <div className="bg-zinc-900/50 backdrop-blur-xl p-8 rounded-[40px] shadow-2xl border border-white/5 space-y-6">
             <div className="flex items-center gap-3">
-              <Lightbulb size={24} className="text-amber-400" />
+              <div className="p-2 bg-amber-500/10 rounded-lg">
+                <Lightbulb size={24} className="text-amber-400" />
+              </div>
               <h3 className="text-xl font-black text-white tracking-tight">Quick Wins</h3>
             </div>
             <div className="space-y-4">
@@ -237,7 +309,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ data }) => {
                       setNewStock(win.currentStock!.toString());
                     }
                   }}
-                  className={`flex items-start gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all group ${win.productId ? 'cursor-pointer border-blue-500/20 bg-blue-500/5' : ''}`}
+                  className={`flex items-start gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all group ${win.productId ? 'cursor-pointer border-blue-500/20 bg-blue-500/5' : ''}`}
                 >
                   <ChevronRight size={16} className={`text-zinc-500 mt-1 group-hover:text-white transition-all ${win.productId ? 'text-blue-400' : ''}`} />
                   <div>
@@ -251,11 +323,12 @@ const AIInsights: React.FC<AIInsightsProps> = ({ data }) => {
             </div>
           </div>
 
-          <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-8 rounded-[40px] shadow-2xl space-y-6">
-            <h3 className="text-xl font-black text-white tracking-tight">AI Confidence Score</h3>
+          {/* AI Confidence Score */}
+          <div className="bg-zinc-900/50 backdrop-blur-xl p-8 rounded-[40px] shadow-2xl border border-white/5 space-y-6">
+            <h3 className="text-xl font-black text-white tracking-tight">AI Confidence</h3>
             <div className="space-y-4">
               <div className="flex justify-between items-end">
-                <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">Model Accuracy</span>
+                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Model Accuracy</span>
                 <span className="text-2xl font-black text-white">94.2%</span>
               </div>
               <div className="h-2 bg-white/5 rounded-full overflow-hidden">
@@ -263,7 +336,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ data }) => {
                   initial={{ width: 0 }}
                   animate={{ width: '94.2%' }}
                   transition={{ duration: 2, ease: "easeOut" }}
-                  className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
+                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_15px_rgba(16,185,129,0.5)]"
                 />
               </div>
               <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-relaxed">
@@ -273,6 +346,27 @@ const AIInsights: React.FC<AIInsightsProps> = ({ data }) => {
           </div>
         </div>
       </div>
+
+      {/* Strategic Analysis Notes Box - Full Width */}
+      {!isLoading && !error && insights && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-zinc-900/50 backdrop-blur-xl rounded-[32px] shadow-2xl border border-white/5 overflow-hidden"
+        >
+          <div className="px-8 py-6 border-b border-white/5 flex items-center gap-3 bg-amber-500/10">
+            <FileText size={20} className="text-amber-400" />
+            <h4 className="text-lg font-black tracking-tight text-amber-400">Strategic Analysis Notes</h4>
+          </div>
+          <div className="p-8">
+            <div className="bg-amber-500/5 border-l-4 border-amber-500/50 p-6 rounded-r-2xl">
+              <div className="prose prose-invert prose-zinc max-w-none text-zinc-400 whitespace-pre-wrap font-medium leading-relaxed">
+                {insights}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Stock Update Modal */}
       <AnimatePresence>

@@ -21,12 +21,62 @@ interface ProductsProps {
 }
 
 const PRODUCT_IMAGES: Record<string, string> = {
-  'Milk & Dairy': 'https://images.unsplash.com/photo-1550583724-125581f77833?w=400&auto=format&fit=crop&q=60',
-  'Fruits & Vegetables': 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400&auto=format&fit=crop&q=60',
-  'Snacks & Munchies': 'https://images.unsplash.com/photo-1599490659213-e2b9527bb087?w=400&auto=format&fit=crop&q=60',
-  'Bakery': 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&auto=format&fit=crop&q=60',
-  'Beverages': 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=400&auto=format&fit=crop&q=60',
-  'Personal Care': 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=400&auto=format&fit=crop&q=60',
+  "Pet Treats": "https://images.unsplash.com/photo-1583511655826-05700d52f4d9?auto=format&fit=crop&w=400&q=60",
+  "Orange Juice": "https://images.unsplash.com/photo-1600271886742-f049cd451bba?auto=format&fit=crop&w=400&q=60",
+  "Eggs": "https://images.unsplash.com/photo-1518569656558-1f25e69d93d7?auto=format&fit=crop&w=400&q=60",
+  "Nuts": "https://images.unsplash.com/photo-1536510233921-8e5043fce771?auto=format&fit=crop&w=400&q=60",
+  "Mango Drink": "https://images.unsplash.com/photo-1622597467836-f3285f2131b5?auto=format&fit=crop&w=400&q=60",
+  "Vitamins": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=400&q=60",
+  "Bread": "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=400&q=60",
+  "Lotion": "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?auto=format&fit=crop&w=400&q=60",
+  "Shampoo": "https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&w=400&q=60",
+  "Popcorn": "https://images.unsplash.com/photo-1578849278619-e73505e9610f?auto=format&fit=crop&w=400&q=60",
+  "Rice": "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=400&q=60",
+  "Detergent": "https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=400&q=60",
+  "Frozen Pizza": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=400&q=60",
+  "Cough Syrup": "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=400&q=60",
+  "Potatoes": "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=400&q=60",
+  "Cheese": "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=400&q=60",
+  "Butter": "https://images.unsplash.com/photo-1589985270958-b8c1f4f0a9f5?auto=format&fit=crop&w=400&q=60",
+  "Wheat Flour": "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?auto=format&fit=crop&w=400&q=60",
+  "Toothpaste": "https://images.unsplash.com/photo-1607619056574-7b8d3ee536b2?auto=format&fit=crop&w=400&q=60",
+  "Curd": "https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=400&q=60",
+  "Iced Tea": "https://images.unsplash.com/photo-1499638673689-79a0b5115d87?auto=format&fit=crop&w=400&q=60",
+  "Pulses": "https://images.unsplash.com/photo-1515543237350-b3eea1ec8082?auto=format&fit=crop&w=400&q=60",
+  "Toilet Cleaner": "https://images.unsplash.com/photo-1584622781564-1d9876a13d00?auto=format&fit=crop&w=400&q=60",
+  "Dish Soap": "https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&w=400&q=60",
+  "Baby Food": "https://images.unsplash.com/photo-1596265307520-8e9d01d6ca68?auto=format&fit=crop&w=400&q=60",
+  "Pain Reliever": "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=400&q=60",
+  "Baby Wipes": "https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&w=400&q=60",
+  "Diapers": "https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&w=400&q=60",
+  "Soap": "https://images.unsplash.com/photo-1607006483225-7b3d7f4d7d22?auto=format&fit=crop&w=400&q=60",
+  "Biscuits": "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=400&q=60",
+  "Tomatoes": "https://images.unsplash.com/photo-1546094096-0df4bcaaa337?auto=format&fit=crop&w=400&q=60",
+  "Mangoes": "https://images.unsplash.com/photo-1553279768-865429fa0078?auto=format&fit=crop&w=400&q=60",
+  "Salt": "https://images.unsplash.com/photo-1518110925495-5fe2fda0442e?auto=format&fit=crop&w=400&q=60",
+  "Ice Cream": "https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=400&q=60",
+  "Cereal": "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=400&q=60",
+  "Sugar": "https://images.unsplash.com/photo-1581441363689-1f3c3c414635?auto=format&fit=crop&w=400&q=60",
+  "Onions": "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=400&q=60",
+  "Cookies": "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?auto=format&fit=crop&w=400&q=60",
+  "Bananas": "https://images.unsplash.com/photo-1574226516831-e1dff420e37f?auto=format&fit=crop&w=400&q=60",
+  "Cola": "https://images.unsplash.com/photo-1581636625402-29b2a704ef13?auto=format&fit=crop&w=400&q=60",
+  "Frozen Biryani": "https://images.unsplash.com/photo-1563379091339-03246963d29d?auto=format&fit=crop&w=400&q=60",
+  "Carrots": "https://images.unsplash.com/photo-1447175008436-054170c2e979?auto=format&fit=crop&w=400&q=60",
+  "Spinach": "https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=400&q=60",
+  "Cat Food": "https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=400&q=60",
+  "Dog Food": "https://images.unsplash.com/photo-1583512603805-3cc6b41f3edb?auto=format&fit=crop&w=400&q=60",
+  "Milk": "https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=400&q=60",
+  "Instant Noodles": "https://images.unsplash.com/photo-1617093727343-374698b1b08d?auto=format&fit=crop&w=400&q=60",
+  "Chips": "https://images.unsplash.com/photo-1566478989037-eec170784d0b?auto=format&fit=crop&w=400&q=60",
+  "Frozen Vegetables": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=400&q=60",
+  "Chocolates": "https://images.unsplash.com/photo-1511381939415-e44015466834?auto=format&fit=crop&w=400&q=60",
+  "Lemonade": "https://images.unsplash.com/photo-1523371054106-bbf80586c38c?auto=format&fit=crop&w=400&q=60"
+};
+
+const getProductImage = (name: string) => {
+  const normalized = name.trim();
+  return PRODUCT_IMAGES[normalized] || `https://source.unsplash.com/featured/?${encodeURIComponent(normalized)},grocery,product`;
 };
 
 const Products: React.FC<ProductsProps> = ({ data, onAddProduct }) => {
@@ -98,7 +148,7 @@ const Products: React.FC<ProductsProps> = ({ data, onAddProduct }) => {
       onAddProduct({
         ...newProduct as Product,
         product_id: `p${data.products.length + 1}`,
-        image: PRODUCT_IMAGES[newProduct.category!]
+        image: getProductImage(newProduct.product_name!)
       });
       setIsModalOpen(false);
       setNewProduct({ product_name: '', category: 'Milk & Dairy', price: 0, stock: 0 });
@@ -242,12 +292,12 @@ const Products: React.FC<ProductsProps> = ({ data, onAddProduct }) => {
                 }}
               >
                 <div className="h-48 relative overflow-hidden">
-                  <img 
-                    src={PRODUCT_IMAGES[product.category] || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&auto=format&fit=crop&q=60'} 
+                  <img
+                    src={getProductImage(product.product_name)}
                     alt={product.product_name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700"
+                    className="w-full h-full object-cover bg-white transition-all duration-700 group-hover:scale-125"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />
                   <div className="absolute top-4 right-4 flex gap-2">
                     <button className="p-2 bg-white/10 backdrop-blur-md border border-white/10 rounded-xl text-white hover:bg-white/20 transition-all">
                       <Edit3 size={16} />
