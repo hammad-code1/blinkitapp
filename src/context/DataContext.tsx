@@ -62,13 +62,29 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('Session error:', error.message);
+        if (error.message.includes('Refresh Token Not Found') || error.message.includes('invalid_grant')) {
+          signOut();
+        } else {
+          setIsLoading(false);
+        }
+        return;
+      }
       handleAuthStateChange(session?.user ?? null);
+    }).catch(err => {
+      console.error('Unexpected session error:', err);
+      setIsLoading(false);
     });
 
     // Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      handleAuthStateChange(session?.user ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+        handleAuthStateChange(session?.user ?? null);
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        handleAuthStateChange(session?.user ?? null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -77,12 +93,28 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const handleAuthStateChange = async (supabaseUser: SupabaseUser | null) => {
     setUser(supabaseUser);
     if (supabaseUser) {
-      // Determine role: hardcoded admin or from profile
-      const userRole = supabaseUser.email === 'admin@blinkit.com' ? 'admin' : 'user';
-      setRole(userRole);
+      // First, try to get role from profile
+      let userRole: UserRole = supabaseUser.email === 'admindemo0@gmail.com' ? 'admin' : 'user';
       
-      // Ensure profile exists in DB
-      await ensureProfile(supabaseUser, userRole);
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', supabaseUser.id)
+          .single();
+        
+        if (profile && profile.role) {
+          userRole = profile.role as UserRole;
+        } else {
+          // If no profile, ensure one exists with the default role
+          await ensureProfile(supabaseUser, userRole);
+        }
+      } catch (err) {
+        console.error('Error fetching profile role:', err);
+        await ensureProfile(supabaseUser, userRole);
+      }
+      
+      setRole(userRole);
     } else {
       setRole(null);
     }

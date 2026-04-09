@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Lock, Shield, ArrowRight, Sparkles, Mail, UserPlus, LogIn } from 'lucide-react';
+import { User, Lock, Shield, ArrowRight, Sparkles, Mail, UserPlus, LogIn, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 const Login: React.FC = () => {
@@ -13,6 +13,7 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [selectedRole, setSelectedRole] = useState<'admin' | 'user'>('user');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -32,12 +33,55 @@ const Login: React.FC = () => {
           throw new Error('Password must be at least 6 characters');
         }
 
-        const { error: signUpError } = await supabase.auth.signUp({
+        // Role Logic
+        if (selectedRole === 'admin') {
+          if (email !== 'admindemo0@gmail.com') {
+            throw new Error('Only the fixed admin email can create admin account');
+          }
+
+          // Check if admin already exists
+          const { data: existingAdmin, error: checkError } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('role', 'admin')
+            .limit(1);
+          
+          if (checkError) {
+            console.error('Check admin error:', checkError);
+          } else if (existingAdmin && existingAdmin.length > 0) {
+            throw new Error('Admin account already exists');
+          }
+        }
+
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            data: {
+              role: selectedRole
+            }
+          }
         });
 
         if (signUpError) throw signUpError;
+        
+        if (signUpData.user) {
+          // Explicitly insert into profiles table as requested
+          const { error: profileError } = await supabase.from('profiles').insert([
+            {
+              id: signUpData.user.id,
+              email: email,
+              role: selectedRole
+            }
+          ]);
+          
+          if (profileError) {
+            console.error('Profile insertion error:', profileError);
+            // We don't necessarily throw here if the user was created, 
+            // but the user wants it stored.
+          }
+        }
+
         setSuccess('Account created! Please check your email for verification.');
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -109,17 +153,32 @@ const Login: React.FC = () => {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="relative overflow-hidden"
+                    className="space-y-4 overflow-hidden"
                   >
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
-                    <input
-                      type="password"
-                      placeholder="Confirm Password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
-                    />
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                      <input
+                        type="password"
+                        placeholder="Confirm Password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                      />
+                    </div>
+
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                      <select
+                        value={selectedRole}
+                        onChange={(e) => setSelectedRole(e.target.value as 'admin' | 'user')}
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-10 text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all appearance-none cursor-pointer"
+                      >
+                        <option value="user" className="bg-zinc-900 text-white">User</option>
+                        <option value="admin" className="bg-zinc-900 text-white">Admin</option>
+                      </select>
+                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={18} />
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -178,7 +237,7 @@ const Login: React.FC = () => {
             <div className="flex items-center justify-center gap-2 text-zinc-500">
               <Sparkles size={14} className="text-blue-500" />
               <span className="text-[10px] font-black uppercase tracking-widest">
-                Admin: admin@blinkit.com / admin123
+                Admin: admindemo0@gmail.com / Admin241260
               </span>
             </div>
           </div>
