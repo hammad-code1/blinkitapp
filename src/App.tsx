@@ -24,7 +24,6 @@ import { AlertCircle, Loader2, Sparkles, Menu, Upload, Database } from 'lucide-r
 
 const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [role, setRole] = useState<UserRole | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
     const { 
@@ -34,27 +33,30 @@ const AppContent: React.FC = () => {
     error, 
     recordCounts, 
     fetchGitHubData, 
-    isFetchingGitHub 
+    isFetchingGitHub,
+    role,
+    user,
+    signOut
   } = useData();
 
-  // Auto-fetch GitHub data for admin if no data is loaded
+  // Auto-fetch GitHub data for all roles if no data is loaded
   useEffect(() => {
-    if (role === 'admin' && !isDataLoaded && !isFetchingGitHub && recordCounts.total === 0) {
+    if (role && !isDataLoaded && !isFetchingGitHub && recordCounts.total === 0) {
       fetchGitHubData();
     }
   }, [role, isDataLoaded, isFetchingGitHub, recordCounts.total, fetchGitHubData]);
 
-  const handleLogin = (userRole: UserRole) => {
-    setRole(userRole);
-    if (userRole === 'user') {
-      setActiveTab('upload');
-    } else {
+  // Handle redirection based on role
+  useEffect(() => {
+    if (role === 'admin') {
       setActiveTab('dashboard');
+    } else if (role === 'user') {
+      setActiveTab('dashboard'); // Both go to dashboard but with different data
     }
-  };
+  }, [role]);
 
-  const handleLogout = () => {
-    setRole(null);
+  const handleLogout = async () => {
+    await signOut();
     setActiveTab('dashboard');
   };
 
@@ -63,12 +65,27 @@ const AppContent: React.FC = () => {
     console.warn('Manual product addition is disabled in Master CSV mode.');
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 text-white space-y-6">
+        <div className="relative">
+          <Loader2 className="w-16 h-16 text-blue-500 animate-spin" />
+          <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-purple-500 animate-pulse" size={24} />
+        </div>
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-black tracking-tighter uppercase">Initializing Blinkit Pro</h2>
+          <p className="text-zinc-500 font-bold text-xs uppercase tracking-widest">Verifying secure session...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!role) {
-    return <Login onLogin={handleLogin} />;
+    return <Login />;
   }
 
   const renderContent = () => {
-    if (isLoading || isFetchingGitHub) {
+    if (isFetchingGitHub) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[80vh] bg-zinc-950 text-white space-y-6">
           <div className="relative">
@@ -163,6 +180,7 @@ const AppContent: React.FC = () => {
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
         role={role!}
+        user={user}
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
         onLogout={handleLogout}

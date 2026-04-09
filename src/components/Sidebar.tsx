@@ -20,22 +20,23 @@ interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   role: 'admin' | 'user';
+  user: any;
   isOpen: boolean;
   onClose: () => void;
   onLogout: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, role, isOpen, onClose, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, role, user, isOpen, onClose, onLogout }) => {
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin'] },
-    { id: 'city', label: 'City Analytics', icon: MapPin, roles: ['admin'] },
-    { id: 'products', label: 'Products', icon: Package, roles: ['admin'] },
-    { id: 'customers', label: 'Customers', icon: Users, roles: ['admin'] },
-    { id: 'delivery', label: 'Delivery', icon: Truck, roles: ['admin'] },
-    { id: 'workflows', label: 'Workflows', icon: Zap, roles: ['admin'] },
-    { id: 'ai', label: 'AI Insights', icon: BrainCircuit, roles: ['admin'] },
-    { id: 'explorer', label: 'Data Explorer', icon: Table, roles: ['admin'] },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'user'] },
+    { id: 'city', label: 'City Analytics', icon: MapPin, roles: ['admin', 'user'] },
+    { id: 'products', label: 'Products', icon: Package, roles: ['admin', 'user'] },
+    { id: 'customers', label: 'Customers', icon: Users, roles: ['admin', 'user'] },
+    { id: 'delivery', label: 'Delivery', icon: Truck, roles: ['admin', 'user'] },
+    { id: 'workflows', label: 'Workflows', icon: Zap, roles: ['admin', 'user'] },
+    { id: 'ai', label: 'AI Insights', icon: BrainCircuit, roles: ['admin', 'user'] },
+    { id: 'explorer', label: 'Data Explorer', icon: Table, roles: ['admin', 'user'] },
     { id: 'upload', label: 'Data Upload', icon: Upload, roles: ['admin', 'user'] },
   ];
 
@@ -90,7 +91,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, role, isOpen,
               </div>
               <div>
                 <p className="text-sm font-bold text-white capitalize">{role}</p>
-                <p className="text-xs text-zinc-500">Active Session</p>
+                <p className="text-xs text-zinc-500 truncate max-w-[180px]">
+                  {user?.email || 'Active Session'}
+                </p>
               </div>
             </div>
           </div>
