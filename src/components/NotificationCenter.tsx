@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Bell, X, AlertTriangle, CheckCircle2, 
   Info, Zap, Clock, ChevronRight 
 } from 'lucide-react';
+import { useData } from '../context/DataContext';
 
 interface Notification {
   id: string;
@@ -20,50 +21,99 @@ interface Notification {
 }
 
 const NotificationCenter: React.FC = () => {
+  const { data, isDataLoaded, lastUploadTime } = useData();
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([
-    { 
-      id: '1', 
-      title: 'High Delay Risk', 
-      message: 'Mumbai Central is experiencing 45% delivery delays.', 
-      type: 'warning', 
-      time: '2m ago',
-      read: false
-    },
-    { 
-      id: '2', 
-      title: 'Stock Alert', 
-      message: 'Amul Milk 500ml is below safety stock level (12 units).', 
-      type: 'error', 
-      time: '15m ago',
-      read: false
-    },
-    { 
-      id: '3', 
-      title: 'Revenue Milestone', 
-      message: 'Daily revenue has crossed ₹10,00,000!', 
-      type: 'success', 
-      time: '1h ago',
-      read: true
-    },
-    { 
-      id: '4', 
-      title: 'System Update', 
-      message: 'Fleet optimization algorithm updated to v2.4.', 
-      type: 'info', 
-      time: '3h ago',
-      read: true
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
+
+  const notifications = useMemo(() => {
+    const alerts: Notification[] = [];
+
+    if (!isDataLoaded || !data) {
+      return [
+        {
+          id: 'no-data',
+          title: 'No Data Loaded',
+          message: 'Please upload a CSV file or fetch data to see system alerts.',
+          type: 'info',
+          time: 'Now',
+          read: false
+        }
+      ];
     }
-  ]);
+
+    // 1. Low Stock Alerts
+    const lowStockProducts = data.products.filter(p => p.stock < 20).slice(0, 3);
+    lowStockProducts.forEach((p, i) => {
+      alerts.push({
+        id: `stock-${p.product_id}`,
+        title: 'Low Stock Alert',
+        message: `${p.product_name} is running low (${p.stock} units remaining).`,
+        type: 'error',
+        time: 'Just now',
+        read: readIds.has(`stock-${p.product_id}`)
+      });
+    });
+
+    // 2. Revenue Milestone
+    const totalRevenue = data.orders.reduce((sum, o) => sum + (o.revenue || 0), 0);
+    if (totalRevenue > 0) {
+      const milestone = totalRevenue > 1000000 ? '₹10L' : totalRevenue > 500000 ? '₹5L' : '₹1L';
+      alerts.push({
+        id: 'revenue-milestone',
+        title: 'Revenue Milestone',
+        message: `Total revenue has crossed ${milestone}! Current: ₹${(totalRevenue / 100000).toFixed(1)}L`,
+        type: 'success',
+        time: '1h ago',
+        read: readIds.has('revenue-milestone')
+      });
+    }
+
+    // 3. Data Load Info
+    if (lastUploadTime) {
+      alerts.push({
+        id: 'data-update',
+        title: 'Data Synchronized',
+        message: `System data was successfully updated at ${lastUploadTime}.`,
+        type: 'info',
+        time: 'Today',
+        read: readIds.has('data-update')
+      });
+    }
+
+    // 4. High Demand Alert
+    const topProduct = [...data.products].sort((a, b) => {
+      const aSales = data.orders.filter(o => o.product_id === a.product_id).length;
+      const bSales = data.orders.filter(o => o.product_id === b.product_id).length;
+      return bSales - aSales;
+    })[0];
+
+    if (topProduct) {
+      alerts.push({
+        id: 'high-demand',
+        title: 'High Demand Detected',
+        message: `${topProduct.product_name} is trending with high order volume.`,
+        type: 'warning',
+        time: '30m ago',
+        read: readIds.has('high-demand')
+      });
+    }
+
+    return alerts.filter(n => !removedIds.has(n.id));
+  }, [data, isDataLoaded, lastUploadTime, readIds, removedIds]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    const allIds = new Set(readIds);
+    notifications.forEach(n => allIds.add(n.id));
+    setReadIds(allIds);
   };
 
   const removeNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    const newRemoved = new Set(removedIds);
+    newRemoved.add(id);
+    setRemovedIds(newRemoved);
   };
 
   return (
@@ -151,10 +201,6 @@ const NotificationCenter: React.FC = () => {
                             <h4 className={`text-sm font-black tracking-tight ${n.read ? 'text-zinc-400' : 'text-white'}`}>
                               {n.title}
                             </h4>
-                            <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest flex items-center gap-1">
-                              <Clock size={10} />
-                              {n.time}
-                            </span>
                           </div>
                           <p className={`text-xs font-medium leading-relaxed ${n.read ? 'text-zinc-500' : 'text-zinc-400'}`}>
                             {n.message}

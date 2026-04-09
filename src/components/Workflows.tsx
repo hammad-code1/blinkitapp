@@ -139,8 +139,26 @@ const Workflows: React.FC<WorkflowsProps> = ({ data }) => {
   }
 
   const activeCount = workflows.filter(w => w.status === 'active').length;
-  const totalTriggers = (data.orders.length * 0.05).toFixed(0); 
-  const efficiency = 24.5;
+  
+  // Calculate dynamic triggers based on real data events
+  const totalTriggers = useMemo(() => {
+    if (!data) return 0;
+    const lowStockCount = data.products.filter(p => p.stock < 50).length;
+    const highDemandCities = data.cityStats.filter(c => c.orders > 500).length;
+    const atRiskUsers = data.customerInsights.filter(u => u.segment === 'At Risk').length;
+    
+    // Sum of potential triggers + a small factor of total orders to represent automated checks
+    return lowStockCount + highDemandCities + Math.floor(atRiskUsers / 10) + Math.floor(data.orders.length / 100);
+  }, [data]);
+
+  // Calculate efficiency gain based on active workflows
+  const efficiency = useMemo(() => {
+    if (activeCount === 0) return 0;
+    const baseEfficiency = activeCount * 6.2;
+    const scaleBonus = (data?.orders.length || 0) / 5000;
+    const efficiencyGain = Math.min(baseEfficiency + scaleBonus, 95);
+    return efficiencyGain.toFixed(1);
+  }, [activeCount, data]);
 
   const toggleStatus = (id: string) => {
     setWorkflows(prev => prev.map(w => 
@@ -411,7 +429,6 @@ const Workflows: React.FC<WorkflowsProps> = ({ data }) => {
                   }`} />
                   <p className="text-sm font-medium text-zinc-300 group-hover:text-white transition-all">{log.msg}</p>
                 </div>
-                <span className="text-xs font-bold text-zinc-600 uppercase tracking-widest">{log.time}</span>
               </div>
             ))
           ) : (
@@ -468,7 +485,6 @@ const Workflows: React.FC<WorkflowsProps> = ({ data }) => {
                         }`} />
                         <p className="text-sm font-medium text-zinc-300">{log.msg}</p>
                       </div>
-                      <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">{log.time}</span>
                     </div>
                   ))
                 ) : (
