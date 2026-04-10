@@ -19,7 +19,7 @@ import DataExplorer from './components/DataExplorer';
 import NotificationCenter from './components/NotificationCenter';
 import Login from './components/Login';
 import { DataProvider, useData } from './context/DataContext';
-import { AnalyticsData, UserRole, Product, BlinkitData } from './types';
+import { AnalyticsData, UserRole, Product, MinuteMetricsData } from './types';
 import { AlertCircle, Loader2, Sparkles, Menu, Upload, Database } from 'lucide-react';
 
 const AppContent: React.FC = () => {
@@ -66,7 +66,7 @@ const AppContent: React.FC = () => {
           <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-purple-500 animate-pulse" size={24} />
         </div>
         <div className="text-center space-y-2">
-          <h2 className="text-2xl font-black tracking-tighter uppercase">Initializing Blinkit Pro</h2>
+          <h2 className="text-xl font-black tracking-tighter uppercase">Initializing Minute Metrics</h2>
           <p className="text-zinc-500 font-bold text-xs uppercase tracking-widest">Verifying secure session...</p>
         </div>
       </div>
@@ -86,8 +86,8 @@ const AppContent: React.FC = () => {
             <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-purple-500 animate-pulse" size={24} />
           </div>
           <div className="text-center space-y-2">
-            <h2 className="text-2xl font-black tracking-tighter uppercase">
-              {isFetchingGitHub ? 'Fetching GitHub Data' : 'Initializing Blinkit Pro'}
+            <h2 className="text-xl font-black tracking-tighter uppercase">
+              {isFetchingGitHub ? 'Fetching GitHub Data' : 'Initializing Minute Metrics'}
             </h2>
             <p className="text-zinc-500 font-bold text-xs uppercase tracking-widest">
               {isFetchingGitHub ? 'Connecting to hammad-dc/mini-project...' : 'Processing real-time operational data...'}
@@ -139,7 +139,7 @@ const AppContent: React.FC = () => {
                  <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">
                    Supported format
                  </p>
-                 <p className="text-xs font-bold text-white">.csv (Blinkit Master Data)</p>
+                 <p className="text-xs font-bold text-white">.csv (Minute Metrics Master Data)</p>
                </div>
                
                <button 
@@ -233,9 +233,9 @@ const AppContent: React.FC = () => {
         <div className="lg:hidden p-4 flex items-center justify-between border-b border-white/10 bg-zinc-950/50 backdrop-blur-md sticky top-0 z-30">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">
-              B
+              M
             </div>
-            <span className="font-bold text-white tracking-tight">Blinkit Pro</span>
+            <span className="font-bold text-white tracking-tight text-sm">Minute Metrics</span>
           </div>
           <button 
             onClick={() => setIsMobileMenuOpen(true)}

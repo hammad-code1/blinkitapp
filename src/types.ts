@@ -143,7 +143,7 @@ export interface AnalyticsData {
   insights?: string[];
 }
 
-export interface BlinkitData {
+export interface MinuteMetricsData {
   stats: AnalyticsData;
   products: Product[];
   orders: JoinedOrder[];

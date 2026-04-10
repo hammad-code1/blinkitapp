@@ -79,7 +79,7 @@ const DataUpload: React.FC = () => {
     const a = document.createElement('a');
     a.setAttribute('hidden', '');
     a.setAttribute('href', url);
-    a.setAttribute('download', `blinkit_master_template.csv`);
+    a.setAttribute('download', `minute_metrics_master_template.csv`);
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -97,7 +97,7 @@ const DataUpload: React.FC = () => {
           <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-zinc-400 to-zinc-600">
             Master Data Sync
           </h1>
-          <p className="text-zinc-500 mt-2 font-medium">Single source of truth for your Blinkit analytics</p>
+          <p className="text-zinc-500 mt-2 font-medium">Single source of truth for your Minute Metrics analytics</p>
         </div>
 
         <div className="flex items-center gap-4">

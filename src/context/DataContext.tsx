@@ -4,13 +4,13 @@
  */
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Order, Product, User, BlinkitData, UserRole } from '../types';
+import { Order, Product, User, MinuteMetricsData, UserRole } from '../types';
 import { processAnalyticsData } from '../utils/dataProcessor';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface DataContextType {
-  data: BlinkitData | null;
+  data: MinuteMetricsData | null;
   isLoading: boolean;
   isDataLoaded: boolean;
   error: string | null;
@@ -38,7 +38,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   
   // Store data separately for each role
   const [roleData, setRoleData] = useState<Record<string, {
-    data: BlinkitData | null;
+    data: MinuteMetricsData | null;
     rawData: any[];
     isDataLoaded: boolean;
     lastUploadTime: string | null;
@@ -118,7 +118,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // For users, check local storage for session data
       if (userRole === 'user') {
-        const savedData = localStorage.getItem(`blinkit_user_data_${supabaseUser.id}`);
+        const savedData = localStorage.getItem(`minute_metrics_user_data_${supabaseUser.id}`);
         if (savedData) {
           try {
             const parsed = JSON.parse(savedData);
@@ -230,7 +230,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         saveToSupabase(dataToProcess);
       } else if (role === 'user' && user) {
         // Store user data in local storage for the session
-        localStorage.setItem(`blinkit_user_data_${user.id}`, JSON.stringify(dataToProcess));
+        localStorage.setItem(`minute_metrics_user_data_${user.id}`, JSON.stringify(dataToProcess));
       }
     } catch (err) {
       setError('Data processing failed. Please check your CSV format.');
@@ -339,7 +339,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Clear local storage for user
     if (role === 'user' && user) {
-      localStorage.removeItem(`blinkit_user_data_${user.id}`);
+      localStorage.removeItem(`minute_metrics_user_data_${user.id}`);
     }
 
     setRoleData(prev => ({

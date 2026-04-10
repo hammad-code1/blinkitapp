@@ -86,7 +86,7 @@ const Customers: React.FC<CustomersProps> = ({ data }) => {
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Orders");
-    XLSX.writeFile(wb, "Blinkit_Customer_Orders.xlsx");
+    XLSX.writeFile(wb, "Minute_Metrics_Customer_Orders.xlsx");
   };
 
   return (

@@ -22,7 +22,7 @@ export const getStrategicInsights = async (data: AnalyticsData) => {
   };
 
   const prompt = `
-    You are a Senior Strategic Analyst for Blinkit, India's leading quick commerce platform.
+    You are a Senior Strategic Analyst for Minute Metrics, a leading quick commerce analytics platform.
     Analyze the following business data and provide high-level strategic insights.
     
     Data Summary:

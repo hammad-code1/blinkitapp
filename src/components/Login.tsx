@@ -116,7 +116,7 @@ const Login: React.FC = () => {
             <div className="inline-flex p-4 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-xl shadow-blue-500/20 mb-4">
               <Shield size={32} className="text-white" />
             </div>
-            <h1 className="text-4xl font-black text-white tracking-tighter uppercase">Blinkit Pro</h1>
+            <h1 className="text-3xl font-black text-white tracking-tighter uppercase">Minute Metrics</h1>
             <p className="text-zinc-500 font-bold text-xs uppercase tracking-widest">
               {isSignUp ? 'Create New Account' : 'Operational Intelligence Portal'}
             </p>

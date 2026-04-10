@@ -140,7 +140,7 @@ const Products: React.FC<ProductsProps> = ({ data, onAddProduct }) => {
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Products");
-    XLSX.writeFile(wb, "Blinkit_Products_Analytics.xlsx");
+    XLSX.writeFile(wb, "Minute_Metrics_Products_Analytics.xlsx");
   };
 
   const handleAddProduct = () => {
