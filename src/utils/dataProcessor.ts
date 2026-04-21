@@ -156,10 +156,6 @@ export const processAnalyticsData = (rawData: any[]): { stats: AnalyticsData; qu
     if (orderId === 'Unknown') {
       isInvalid = true;
       console.warn(`Row ${idx + 1}: Missing order_id. Skipping.`);
-    } else if (orderIds.has(orderId)) {
-      quality.duplicates++;
-      isInvalid = true;
-      console.warn(`Row ${idx + 1}: Duplicate order_id ${orderId}. Skipping.`);
     }
 
     if (isInvalid) {
@@ -167,7 +163,7 @@ export const processAnalyticsData = (rawData: any[]): { stats: AnalyticsData; qu
       return;
     }
 
-    orderIds.add(orderId);
+    // orderIds.add(orderId); // REMOVED: Allow multiple items per Order ID
     quality.validRows++;
     if (isCorrected) quality.correctedRows++;
 
@@ -310,18 +306,19 @@ export const processAnalyticsData = (rawData: any[]): { stats: AnalyticsData; qu
     revenue: data.revenue,
     avgOrderValue: data.orders > 0 ? data.revenue / data.orders : 0,
     avgDeliveryTime: data.deliveryTimes.length > 0 ? data.deliveryTimes.reduce((a, b) => a + b, 0) / data.deliveryTimes.length : 0,
-    topCategory: 'N/A', // Simplified
-    topCity: 'N/A',     // Simplified
-    lateDeliveryPercent: (data.deliveryTimes.filter(t => t > 45).length / data.deliveryTimes.length) * 100
+    topCategory: 'N/A', 
+    topCity: 'N/A',     
+    lateDeliveryPercent: data.deliveryTimes.length > 0 ? (data.deliveryTimes.filter(t => t > 45).length / data.deliveryTimes.length) * 100 : 0
   })).sort((a, b) => a.date.localeCompare(b.date));
 
   // Validation: Show calculation for the first date in the dataset
   if (dailyStats.length > 0) {
     const firstDate = dailyStats[0];
     const rawDataForDate = dailyMap.get(firstDate.date);
+    const times = rawDataForDate?.deliveryTimes || [];
     console.log(`[Validation] Date: ${firstDate.date}`);
     console.log(`[Validation] Total Orders: ${firstDate.orders}`);
-    console.log(`[Validation] Sum of Delays: ${rawDataForDate?.deliveryTimes.reduce((a, b) => a + b, 0)}`);
+    console.log(`[Validation] Sum of Delays: ${times.reduce((a, b) => a + b, 0)}`);
     console.log(`[Validation] Avg Delay: ${firstDate.avgDeliveryTime.toFixed(2)} (Sum / Total)`);
   }
 
@@ -341,7 +338,7 @@ export const processAnalyticsData = (rawData: any[]): { stats: AnalyticsData; qu
       orders: data.orders,
       revenue: data.revenue,
       avgDeliveryTime: Number((data.deliveryTimes.length > 0 ? data.deliveryTimes.reduce((a, b) => a + b, 0) / data.deliveryTimes.length : 0).toFixed(1)),
-      delayRate: (data.deliveryTimes.filter(t => t > 45).length / data.deliveryTimes.length) * 100
+      delayRate: data.deliveryTimes.length > 0 ? (data.deliveryTimes.filter(t => t > 45).length / data.deliveryTimes.length) * 100 : 0
     }))
     .sort((a, b) => b.revenue - a.revenue);
 

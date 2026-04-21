@@ -80,10 +80,11 @@ const getProductImage = (name: string) => {
 };
 
 const Products: React.FC<ProductsProps> = ({ data, onAddProduct }) => {
-  const { updateProductStock } = useData();
+  const { updateProductStock, dataMode, fetchLiveData } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingProduct, setEditingProduct] = useState<{ id: string; name: string; stock: number } | null>(null);
   const [newStock, setNewStock] = useState<string>('');
   const [newProduct, setNewProduct] = useState<Partial<Product>>({
@@ -143,23 +144,60 @@ const Products: React.FC<ProductsProps> = ({ data, onAddProduct }) => {
     XLSX.writeFile(wb, "Minute_Metrics_Products_Analytics.xlsx");
   };
 
-  const handleAddProduct = () => {
-    if (newProduct.product_name && newProduct.price && newProduct.stock) {
-      onAddProduct({
-        ...newProduct as Product,
-        product_id: `p${data.products.length + 1}`,
-        image: getProductImage(newProduct.product_name!)
-      });
-      setIsModalOpen(false);
-      setNewProduct({ product_name: '', category: 'Milk & Dairy', price: 0, stock: 0 });
+  const handleAddProduct = async () => {
+    if (newProduct.product_name && newProduct.price !== undefined && newProduct.stock !== undefined) {
+      setIsSubmitting(true);
+      try {
+        const productData: Product = {
+          ...newProduct as Product,
+          product_id: dataMode === 'live' ? `lp-${Date.now()}` : `p${(data?.products?.length || 0) + 1}`,
+          image: getProductImage(newProduct.product_name!)
+        };
+
+        if (dataMode === 'live') {
+          const { supabase } = await import('../lib/supabase');
+          const { error } = await supabase.from('products').insert(productData);
+          if (error) throw error;
+          // Refresh
+          await fetchLiveData();
+        } else {
+          onAddProduct(productData);
+        }
+        
+        setIsModalOpen(false);
+        setNewProduct({ product_name: '', category: 'Milk & Dairy', price: 0, stock: 0 });
+      } catch (err) {
+        console.error('Error saving product:', err);
+        alert('Failed to save product. Check database connection.');
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
-  const handleUpdateStock = () => {
+  const handleUpdateStock = async () => {
     if (editingProduct && newStock !== '') {
-      updateProductStock(editingProduct.id, parseInt(newStock));
-      setEditingProduct(null);
-      setNewStock('');
+      setIsSubmitting(true);
+      try {
+        if (dataMode === 'live') {
+          const { supabase } = await import('../lib/supabase');
+          const { error } = await supabase
+            .from('products')
+            .update({ stock: parseInt(newStock) })
+            .eq('product_id', editingProduct.id);
+          if (error) throw error;
+          await fetchLiveData();
+        } else {
+          updateProductStock(editingProduct.id, parseInt(newStock));
+        }
+        setEditingProduct(null);
+        setNewStock('');
+      } catch (err) {
+        console.error('Error updating stock:', err);
+        alert('Failed to update stock.');
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -432,9 +470,10 @@ const Products: React.FC<ProductsProps> = ({ data, onAddProduct }) => {
                   </button>
                   <button 
                     onClick={handleAddProduct}
-                    className="flex-1 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-blue-500/20"
+                    disabled={isSubmitting}
+                    className="flex-1 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Save Product
+                    {isSubmitting ? 'Saving...' : 'Save Product'}
                   </button>
                 </div>
               </div>
@@ -494,9 +533,10 @@ const Products: React.FC<ProductsProps> = ({ data, onAddProduct }) => {
                 </button>
                 <button 
                   onClick={handleUpdateStock}
-                  className="py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20"
+                  disabled={isSubmitting}
+                  className="py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Confirm Update
+                  {isSubmitting ? 'Updating...' : 'Confirm Update'}
                 </button>
               </div>
             </motion.div>

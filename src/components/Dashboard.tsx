@@ -9,7 +9,7 @@ import {
   ShoppingBag, IndianRupee, TrendingUp, TrendingDown, 
   Clock, AlertTriangle, Calendar as CalendarIcon, 
   ChevronDown, Filter, ArrowUpRight, ArrowDownRight, MapPin, Users,
-  ShieldCheck, Sparkles, PackageSearch, Activity
+  ShieldCheck, Sparkles, PackageSearch, Activity, Database, Zap
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -26,6 +26,7 @@ interface DashboardProps {
 const COLORS = ['#8b5cf6', '#3b82f6', '#ec4899', '#10b981', '#f59e0b', '#ef4444'];
 
 const Dashboard: React.FC<DashboardProps> = ({ data }) => {
+  const { dataMode, setDataMode, fetchLiveData } = useData();
   const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'all'>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedCity, setSelectedCity] = useState<string>('all');
@@ -101,7 +102,9 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
       <div className="flex items-center justify-center min-h-screen bg-zinc-950 text-white p-10">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-xl font-black uppercase tracking-tighter">Loading Dashboard...</p>
+          <p className="text-xl font-black uppercase tracking-tighter">
+            {dataMode === 'live' ? 'Connecting to Live Database...' : 'Loading Dashboard...'}
+          </p>
         </div>
       </div>
     );
@@ -138,15 +141,14 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
     },
   ];
 
-  const highDelayCity = useMemo(() => {
-    if (!data?.cityStats || data.cityStats.length === 0) return null;
-    return [...data.cityStats].sort((a, b) => b.delayRate - a.delayRate)[0];
-  }, [data?.cityStats]);
-
   const renderChartFallback = (message: string) => (
     <div className="flex flex-col items-center justify-center h-full space-y-4 text-zinc-500">
       <AlertTriangle size={32} className="opacity-20" />
-      <p className="text-sm font-bold uppercase tracking-widest opacity-50">{message}</p>
+      <p className="text-sm font-bold uppercase tracking-widest opacity-50 text-center px-4">
+        {dataMode === 'live' && data.orders.length === 0 
+          ? "No live data available. Add products/orders to Supabase." 
+          : message}
+      </p>
     </div>
   );
 
@@ -159,10 +161,44 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div>
-          <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-zinc-400 to-zinc-600">
-            Global Dashboard
-          </h1>
-          <p className="text-zinc-500 mt-2 font-medium">Real-time operational overview and performance metrics</p>
+          <div className="flex items-center gap-3">
+             <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-zinc-400 to-zinc-600">
+              Global Dashboard
+            </h1>
+            {dataMode === 'live' && (
+              <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">🟢 Live Mode Active</span>
+              </div>
+            )}
+          </div>
+          <p className="text-zinc-500 mt-2 font-medium">
+            {dataMode === 'live' 
+              ? 'Data from Supabase (Persistent)' 
+              : 'Real-time operational overview and performance metrics'}
+          </p>
+        </div>
+
+        {/* Mode Toggle */}
+        <div className="flex items-center gap-3 p-1.5 bg-white/5 border border-white/10 rounded-2xl">
+          <button 
+            onClick={() => setDataMode('static')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+              dataMode === 'static' ? 'bg-white text-zinc-950 shadow-lg' : 'text-zinc-500 hover:text-white'
+            }`}
+          >
+            <Database size={12} />
+            Static CSV
+          </button>
+          <button 
+            onClick={() => setDataMode('live')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+              dataMode === 'live' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-zinc-500 hover:text-white'
+            }`}
+          >
+            <Zap size={12} />
+            Live Mode
+          </button>
         </div>
       </div>
 
@@ -475,7 +511,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
               <div style={{ height: Math.max(400, data.cityStats.length * 40) + 'px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={data.cityStats} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#ffffff05" />
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#ffffff01" />
                     <XAxis 
                       type="number"
                       axisLine={false} 
@@ -522,7 +558,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
               <div className="p-2 bg-rose-500/20 rounded-lg">
                 <PackageSearch size={20} className="text-rose-400" />
               </div>
-              <h3 className="text-xl font-black text-white tracking-tight uppercase">Inventory Alerts</h3>
+              <h3 className="text-xl font-black text-white tracking-tight uppercase text-xs tracking-widest">Inventory Alerts</h3>
             </div>
             <span className="px-3 py-1 bg-rose-500/10 text-rose-400 rounded-full text-[10px] font-black uppercase tracking-widest">
               {lowStockProducts.length} Products Low
@@ -532,7 +568,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
             {lowStockProducts.slice(0, 4).map((product) => (
               <div 
                 key={product.product_id} 
-                className="p-4 bg-rose-500/5 border border-rose-500/10 rounded-2xl flex items-center justify-between group hover:bg-rose-500/10 transition-all"
+                className="p-4 bg-rose-500/5 border border-rose-500/10 rounded-2xl flex items-center justify-between group hover:bg-rose-500/10 transition-all cursor-pointer"
               >
                 <div>
                   <p className="text-sm font-bold text-white group-hover:text-rose-200 transition-all">{product.product_name}</p>
@@ -560,20 +596,20 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
               <div className="p-2 bg-blue-500/20 rounded-lg">
                 <Sparkles size={20} className="text-blue-400" />
               </div>
-              <h3 className="text-xl font-black text-white tracking-tight uppercase">Smart Insights</h3>
+              <h3 className="text-xl font-black text-white tracking-tight uppercase tracking-widest text-xs">Smart Insights</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {(data.insights || [
                 "Revenue is trending upwards by 12% this week.",
-                "Dairy products are seeing a 25% surge in Mumbai.",
-                "Late deliveries are impacting customer retention in Delhi.",
-                "Stock levels for 'Milk' are critically low."
-              ]).slice(0, 4).map((insight, i) => (
+                "Top product 'Amul Milk' has consistent demand.",
+                "Delivery delays are highest in 'Mumbai' area.",
+                "Inventory for 5 items is dangerously low."
+              ]).map(( insight, idx) => (
                 <motion.div 
-                  key={i}
+                  key={idx}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
+                  transition={{ delay: idx * 0.1 }}
                   className="flex items-start gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all"
                 >
                   <div className="mt-1 w-1.5 h-1.5 bg-blue-400 rounded-full flex-shrink-0" />

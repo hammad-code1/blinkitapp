@@ -8,7 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Upload, FileText, CheckCircle2, AlertCircle, 
   Download, Trash2, FileSpreadsheet, Info,
-  ChevronRight, ArrowRight, ShieldCheck, Database
+  ChevronRight, ArrowRight, ShieldCheck, Database,
+  Loader2, Zap
 } from 'lucide-react';
 import Papa from 'papaparse';
 
@@ -16,8 +17,9 @@ import { useData } from '../context/DataContext';
 
 const DataUpload: React.FC = () => {
   const [uploading, setUploading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const { resetData, lastUploadTime, recordCounts, updateMasterData, data } = useData();
+  const { resetData, lastUploadTime, recordCounts, updateMasterData, data, dataMode, staticData } = useData();
 
   const validateMasterData = (data: any[]): string | null => {
     if (data.length === 0) return 'The uploaded file is empty.';
@@ -37,6 +39,76 @@ const DataUpload: React.FC = () => {
     }
 
     return null;
+  };
+
+  const handleBulkSync = async () => {
+    // We always sync the Static (CSV) data to Supabase
+    if (!staticData || !staticData.stats || !staticData.stats.orders.length) {
+      setStatus({ type: 'error', message: 'No CSV data loaded to sync. Please upload a file in Static Mode first.' });
+      return;
+    }
+
+    setSyncing(true);
+    setStatus(null);
+
+    const dataToSync = staticData.stats;
+
+    try {
+      const { supabase } = await import('../lib/supabase');
+      
+      // 1. Prepare Products (Unique)
+      const uniqueProductsMap = new Map();
+      dataToSync.products.forEach((p: any) => {
+        uniqueProductsMap.set(p.product_id, {
+          product_id: p.product_id,
+          product_name: p.product_name,
+          category: p.category,
+          price: p.price,
+          stock: p.stock
+        });
+      });
+      const productsToSync = Array.from(uniqueProductsMap.values());
+
+      // 2. Prepare Orders
+      const ordersToSync = dataToSync.orders.map((o: any) => ({
+        order_id: o.order_id,
+        user_id: o.user_id,
+        product_id: o.product_id,
+        quantity: o.quantity,
+        revenue: o.revenue,
+        city: o.city,
+        order_date: o.order_date,
+        delivery_time_mins: o.delivery_time_mins,
+        item_rating: (o as any).rating || (o as any).item_rating || 5, // Fallback
+        metadata: o.raw || {} // Preserve all 47 columns
+      }));
+
+      // 3. Batch Insert Products
+      const { error: pError } = await supabase.from('products').upsert(productsToSync, { onConflict: 'product_id' });
+      if (pError) throw pError;
+
+      // 4. Batch Sync Orders (Delete existing then Insert new to handle duplicates correctly)
+      // This ensures the live database matches the uploaded CSV exactly
+      const { error: delError } = await supabase.from('orders').delete().neq('order_id', '_FORCE_CLEAR_');
+      if (delError) throw delError;
+
+      const chunkSize = 100;
+      for (let i = 0; i < ordersToSync.length; i += chunkSize) {
+        const chunk = ordersToSync.slice(i, i + chunkSize);
+        const { error: oError } = await supabase.from('orders').insert(chunk);
+        if (oError) {
+          console.error('Batch error:', oError);
+          throw new Error(`Sync failed at row ${i}. Error: ${oError.message}. IMPORTANT: Make sure your "orders" table has the "metadata" column.`);
+        }
+      }
+
+      setStatus({ type: 'success', message: `Database Synchronized! ${productsToSync.length} products and ${ordersToSync.length} orders saved to Supabase.` });
+    } catch (err: any) {
+      console.error('Sync error:', err);
+      setStatus({ type: 'error', message: `Sync Failed: ${err.message || 'Unknown error'}` });
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,13 +145,28 @@ const DataUpload: React.FC = () => {
   };
 
   const downloadTemplate = () => {
-    const csv = 'order_id,user_id,user_name,city,email,product_id,product_name,category,price,quantity,stock,order_date\nORD101,USER001,Amit Sharma,Mumbai,amit@gmail.com,PROD001,Milk,Dairy,45,2,100,2026-03-19';
+    // Exact 47-column structure from Blinkit Master Dataset
+    const headers = [
+      'order_id', 'user_id', 'user_name', 'city', 'email', 'product_id', 'product_name', 'category', 'price', 'quantity', 'stock', 'order_date',
+      'actual_delivery_time', 'promised_delivery_time', 'delivery_time_mins', 'rating', 'payment_method', 'store_id', 'store_name', 'store_type', 
+      'item_weight', 'item_fat_content', 'item_visibility', 'item_type', 'item_mrp', 'outlet_identifier', 'outlet_establishment_year', 'outlet_size', 
+      'outlet_location_type', 'outlet_type', 'total_discount', 'coupon_code', 'delivery_fee', 'tax_amount', 'referral_id', 'platform', 'device_type',
+      'longitude', 'latitude', 'brand_name', 'is_seasonal', 'is_organic', 'shelf_life_days', 'storage_condition', 'packaging_type', 'return_status', 'is_active'
+    ];
+    
+    const row = [
+      'ORD_B_001', 'USR_99', 'Hammad Sunasra', 'Mumbai', 'hammad@example.com', 'PROD_M_01', 'Amul Gold Milk 1L', 'Milk & Dairy', '66', '2', '450', '2026-03-24T18:45:00',
+      '2026-03-24T18:57:00', '2026-03-24T18:55:00', '12', '5', 'UPI', 'ST_09', 'Blinkit Mumbai Central', 'Grocery', '1kg', 'Full Cream', '0.012', 'Milk', '68', 'OUT_101', '2015', 'Large', 
+      'Tier 1', 'Main Hub', '2.00', 'NO_COUPON', '15.00', '3.50', 'REF_001', 'Android', 'Mobile', '18.9750', '72.8258', 'Amul', 'No', 'Yes', '2', 'Refrigerated', 'Pouch', 'Delivered', 'True'
+    ];
+
+    const csv = [headers.join(','), row.join(',')].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.setAttribute('hidden', '');
     a.setAttribute('href', url);
-    a.setAttribute('download', `minute_metrics_master_template.csv`);
+    a.setAttribute('download', `blinkit_master_complete_47_cols.csv`);
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -189,6 +276,42 @@ const DataUpload: React.FC = () => {
               </label>
             </div>
 
+            {/* Sync to Supabase Section */}
+            {data && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="pt-6 relative z-10"
+              >
+                <div className="p-6 bg-blue-600/10 border border-blue-500/20 rounded-[32px] space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Zap className="text-blue-400" size={20} />
+                      <h4 className="text-sm font-black text-white uppercase tracking-widest">Push to Live Database</h4>
+                    </div>
+                    <span className="text-[10px] font-black text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full border border-blue-400/20 uppercase tracking-widest">
+                      Supabase Ready
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-medium text-zinc-400 leading-relaxed">
+                    This will **replace** all data in your Supabase database with the CSV file currently uploaded above. Use this to update Live Mode with a new dataset.
+                  </p>
+                  <button 
+                    onClick={handleBulkSync}
+                    disabled={syncing}
+                    className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed group"
+                  >
+                    {syncing ? (
+                      <Loader2 className="animate-spin" size={18} />
+                    ) : (
+                      <Zap className="group-hover:scale-110 transition-transform" size={18} />
+                    )}
+                    {syncing ? 'Replacing Database Content...' : 'Overwrite Live Database with this CSV'}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
             <div className="pt-8 border-t border-white/10 flex items-center justify-between relative z-10">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-3">
@@ -288,7 +411,8 @@ const DataUpload: React.FC = () => {
             </h4>
             <div className="space-y-3">
               {[
-                'Strict column order required',
+                'Full 47 dimensions supported',
+                'Extra columns auto-preserved',
                 'Dates: YYYY-MM-DD or ISO',
                 'Prices & Stock must be numeric',
                 'Unique order_id per row',
